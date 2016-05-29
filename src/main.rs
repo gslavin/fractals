@@ -32,52 +32,38 @@ fn run_until_escape(z: Complex64, escape_limit: f64, iter_limit: u32,
 }
 
 fn main() {
-    let mut img = Image::new(SIZE, SIZE);
-    /*
-    // Fixed size Array, using vectors instead
-    let mut pixels: [[u32; (SIZE as usize)]; (SIZE as usize)] =
-        [[0; (SIZE as usize)]; (SIZE as usize)];
-    */
-    let mut pixels = vec![vec![0; (SIZE as usize)]; (SIZE as usize)];
+    let mut pixels = vec![0; (SIZE*SIZE) as usize];
 
-    for (x,y) in img.coordinates()
-    {
+    let coordinates: Vec<(u32, u32)> = (0..SIZE).flat_map(move |x| (0..SIZE).map(move |y| (x,y))).collect();
+    for &(x, y) in &coordinates {
         let float_x: f64 = WIDTH*((x as f64)/(SIZE as f64) - 0.5);
         let float_y: f64 = HEIGHT*((y as f64)/(SIZE as f64) - 0.5);
         let iterations = run_until_escape(Complex{re:float_x, im:float_y}, 
-            ESCAPE_LIMIT, ITER_LIMIT,
-            fractal_func(C_VAL));
-        pixels[x as usize][y as usize] = iterations;
+                                          ESCAPE_LIMIT, ITER_LIMIT,
+                                          fractal_func(C_VAL));
+        pixels[(SIZE*x + y) as usize] = iterations;
     }
 
-    let mut max = 0;
-    for x in 0..SIZE {
-        for y in 0..SIZE {
-            let current = pixels[x as usize][y as usize];
-            if current < ITER_LIMIT && current > max {
-               max = current; 
-            }
-        }
-    }
-    println!("{}", max);
+    let max = pixels.iter().cloned().filter(|&x| x < ITER_LIMIT).max().unwrap();
+    println!("max pixel: {}", max);
 
-    for x in 0..SIZE {
-        for y in 0..SIZE {
-            let current = pixels[x as usize][y as usize];
+    for &(x, y) in &coordinates {
+            let current = pixels[(SIZE*x + y) as usize];
             if current < ITER_LIMIT {
-                pixels[x as usize][y as usize] *= 256;
-                pixels[x as usize][y as usize] /= max;
+                pixels[(SIZE*x + y) as usize] *= 256;
+                pixels[(SIZE*x + y) as usize] /= max;
             }
             else {
-                pixels[x as usize][y as usize] = 256;
+                pixels[(SIZE*x + y) as usize] = 256;
             }
-        }
     }
 
+    let mut img = Image::new(SIZE, SIZE);
     for (x,y) in img.coordinates()
     {
-        let val = pixels[x as usize][y as usize];
+        let val = pixels[(SIZE*x + y) as usize];
         img.set_pixel(x, y, px!(val, val, val));
     }
+
     let _ = img.save("test.bmp");
 }
