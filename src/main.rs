@@ -5,7 +5,7 @@ extern crate num;
 use num::complex::*;
 use bmp::{Image, Pixel};
 
-const SIZE: u32 = 256;
+const SIZE: u32 = 1024;
 const ESCAPE_LIMIT: f64 = 1000000.0;
 const ITER_LIMIT: u32 = 200;
 const WIDTH: f64 = 0.005;
@@ -29,34 +29,45 @@ fn mandelbrot() -> Box<Fn(Complex64, Complex64) -> Complex64>
     return Box::new(move |z: Complex64, c: Complex64| z*z + c);
 }
 
-fn run_until_escape(gen_fn: Box<Fn(Complex64, Complex64) -> Complex64>,
+fn run_until_escape(gen_fn: &Box<Fn(Complex64, Complex64) -> Complex64>,
     c: Complex64, escape_limit: f64, iter_limit: u32) -> u32
 {
     let mut z: Complex64 = Complex64{ re: 0.0, im: 0.0};
     let mut n: u32 = 0; 
     while z.norm_sqr() < escape_limit && n < iter_limit {
         n += 1;
-        z = (*gen_fn)(z, c);
+        z = (**gen_fn)(z, c);
     }
 
     return n;
 }
+fn create_bmp(pixels: Vec<u32>) {
+    let mut img = Image::new(SIZE, SIZE);
+    for (x,y) in img.coordinates()
+    {
+        let val = pixels[(SIZE*x + y) as usize];
+        img.set_pixel(x, y, px!(val, val, val));
+    }
 
-fn main() {
+    let _ = img.save("test.bmp");
+}
+
+fn run_fractal(gen_fn: Box<Fn(Complex64, Complex64) -> Complex64>) {
     let mut pixels = vec![0; (SIZE*SIZE) as usize];
 
+    // Run fractal generation
     let coordinates: Vec<(u32, u32)> = (0..SIZE).flat_map(move |x| (0..SIZE).map(move |y| (x,y))).collect();
     for &(x, y) in &coordinates {
         let float_x: f64 = WIDTH*((x as f64)/(SIZE as f64) - 0.5) - X_CENTER;
         let float_y: f64 = HEIGHT*((y as f64)/(SIZE as f64) - 0.5) - Y_CENTER;
-        let iterations = run_until_escape(burning_ship(), Complex{re: float_x, im: float_y}, 
+        let iterations = run_until_escape(&gen_fn, Complex{re: float_x, im: float_y}, 
                                           ESCAPE_LIMIT, ITER_LIMIT);
         pixels[(SIZE*x + y) as usize] = iterations;
     }
 
+    // Normalize to 256 scale
     let max = pixels.iter().cloned().filter(|&x| x < ITER_LIMIT).max().unwrap();
     println!("max pixel: {}", max);
-
     for &(x, y) in &coordinates {
             let current = pixels[(SIZE*x + y) as usize];
             if current < ITER_LIMIT {
@@ -68,12 +79,10 @@ fn main() {
             }
     }
 
-    let mut img = Image::new(SIZE, SIZE);
-    for (x,y) in img.coordinates()
-    {
-        let val = pixels[(SIZE*x + y) as usize];
-        img.set_pixel(x, y, px!(val, val, val));
-    }
+    // Create bmp
+    create_bmp(pixels);
+}
 
-    let _ = img.save("test.bmp");
+fn main() {
+    run_fractal(burning_ship());
 }
