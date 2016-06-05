@@ -17,13 +17,16 @@ const Y_CENTER: f64 = 0.004;
 #[inline]
 fn burning_ship() -> Box<Fn(Complex64, Complex64) -> Complex64> 
 {
-    return Box::new(move |z: Complex64, c: Complex64| (Complex{re: z.re.abs(), im: z.im.abs()}).powf(2.0) + c);
+    return Box::new(move |z: Complex64, c: Complex64| {
+        let temp = Complex{re: z.re.abs(), im: z.im.abs()};
+        return (temp * temp) + c;
+    });
 }
 
 // Mendelbrot 
 fn mandelbrot() -> Box<Fn(Complex64, Complex64) -> Complex64> 
 {
-    return Box::new(move |z: Complex64, c: Complex64| z.powf(2.0) + c);
+    return Box::new(move |z: Complex64, c: Complex64| z*z + c);
 }
 
 fn run_until_escape(gen_fn: Box<Fn(Complex64, Complex64) -> Complex64>,
